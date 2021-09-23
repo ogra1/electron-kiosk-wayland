@@ -1,0 +1,103 @@
+name: electron-kiosk-uc20
+version: '0.1'
+summary: Electron based kiosk browser
+description: |
+  A simple Electron Kiosk app that acts as a fullscreen browser
+  to be used on Ubuntu Core 20 systems with the ubuntu-frame display
+  server.
+
+  First install ubuntu-frame with
+
+      snap install ubuntu-frame
+  
+  To quieten log spam please connect the interfaces below
+
+      snap connect electron-kiosk-uc20:hardware-observe
+      snap connect electron-kiosk-uc20:network-observe
+      snap connect electron-kiosk-uc20:process-control
+
+  The app comes with a configuarble url option that allows you to 
+  pick which page is shown. To use this feature simply call
+
+      snap set electron-kiosk-uc20 url=https://www.ubuntu.com
+
+base: core20
+confinement: strict
+grade: devel
+compression: lzo
+
+architectures:
+  - build-on: amd64
+  - build-on: armhf
+  - build-on: arm64
+
+apps:
+  electron-kiosk-uc20:
+    daemon: simple
+    restart-condition: always
+    extensions: [ gnome-3-38 ]
+    command: usr/bin/wrapper
+    command-chain:
+      - bin/dbus-launch
+      - snap/command-chain/desktop-launch
+    plugs:
+      - audio-playback
+      - browser-support
+      - hardware-observe
+      - network
+      - network-bind
+      - opengl
+      - process-control
+      - wayland
+
+# Needed by Mir and/or Wayland
+layout:
+  /usr/share/icons:
+    bind: $SNAP/gnome-platform/usr/share/icons
+  /usr/share/fonts:
+    bind: $SNAP/gnome-platform/usr/share/fonts
+  /usr/local/share/fonts:
+    bind: $SNAP_COMMON/fonts
+
+parts:
+  electron-helloworld:
+    plugin: nil
+    source: https://github.com/electron/electron-quick-start.git
+    build-environment:
+      - PATH: "$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin"
+    override-build: |
+      set +u # core20 base does not allow unbound variables !
+      # workaround for build.snapcraft.io builds
+      # https://bugs.launchpad.net/bugs/1886861
+      if [ -n "$http_proxy" ]; then
+        export ELECTRON_GET_USE_PROXY=1
+        export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
+        export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
+      fi
+
+      npm install --unsafe-perm true electron-packager
+      cp $SNAPCRAFT_PROJECT_DIR/electron/main.js .
+      electron-packager . --overwrite --platform=linux \
+          --output=release-build --prune=true
+      cp -a ./electron-quick-start-linux-* $SNAPCRAFT_PART_INSTALL/electron-helloworld
+    stage-packages:
+      - libnspr4
+      - libnss3
+    build-snaps:
+      - node/16/stable
+  dbus-launch:
+    plugin: dump
+    source: dbus
+    organize:
+      session.conf: etc/dbus-1/session.conf
+      dbus-launch: bin/dbus-launch
+    override-prime: |
+      snapcraftctl prime
+      sed -i "s/SNAP_NAME/$SNAPCRAFT_PROJECT_NAME/" $SNAPCRAFT_PRIME/etc/dbus-1/session.conf
+    stage-packages:
+      - dbus
+  wrapper:
+    plugin: dump
+    source: wrapper
+    organize:
+      wrapper.sh: usr/bin/wrapper
