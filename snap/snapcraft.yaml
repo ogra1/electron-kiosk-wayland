@@ -9,14 +9,14 @@ description: |
   First install ubuntu-frame with
 
       snap install ubuntu-frame
-  
+
   To quieten log spam please connect the interfaces below
 
       snap connect electron-kiosk-wayland:hardware-observe
       snap connect electron-kiosk-wayland:network-observe
       snap connect electron-kiosk-wayland:process-control
 
-  The app comes with a configuarble url option that allows you to 
+  The app comes with a configuarble url option that allows you to
   pick which page is shown. To use this feature simply call
 
       snap set electron-kiosk-wayland url=https://www.ubuntu.com
@@ -36,6 +36,8 @@ apps:
     daemon: simple
     restart-condition: always
     extensions: [ gnome-3-38 ]
+    environment:
+      GTK_USE_PORTAL: 0
     command: usr/bin/wrapper
     command-chain:
       - bin/dbus-launch
