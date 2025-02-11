@@ -21,27 +21,23 @@ description: |
 
       snap set electron-kiosk-wayland url=https://www.ubuntu.com
 
-base: core20
+base: core24
 confinement: strict
 grade: devel
 compression: lzo
 
-architectures:
-  - build-on: amd64
-  - build-on: armhf
-  - build-on: arm64
+platforms:
+  amd64:
+  arm64:
 
 apps:
   electron-kiosk-wayland:
     daemon: simple
     restart-condition: always
-    extensions: [ gnome-3-38 ]
+    extensions: [ gnome ]
     environment:
       GTK_USE_PORTAL: 0
     command: usr/bin/wrapper
-    command-chain:
-      - bin/dbus-launch
-      - snap/command-chain/desktop-launch
     plugs:
       - audio-playback
       - browser-support
@@ -66,7 +62,7 @@ parts:
     plugin: nil
     source: https://github.com/electron/electron-quick-start.git
     build-environment:
-      - PATH: "$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin"
+      - PATH: "$PATH:$CRAFT_PART_BUILD/node_modules/.bin"
     override-build: |
       set +u # core20 base does not allow unbound variables !
       # workaround for build.snapcraft.io builds
@@ -81,23 +77,12 @@ parts:
       cp $SNAPCRAFT_PROJECT_DIR/electron/main.js .
       electron-packager . --overwrite --platform=linux \
           --output=release-build --prune=true
-      cp -a ./electron-quick-start-linux-* $SNAPCRAFT_PART_INSTALL/electron-helloworld
+      cp -a ./electron-quick-start-linux-* $CRAFT_PART_INSTALL/electron-helloworld
     stage-packages:
       - libnspr4
       - libnss3
     build-snaps:
       - node/16/stable
-  dbus-launch:
-    plugin: dump
-    source: dbus
-    organize:
-      session.conf: etc/dbus-1/session.conf
-      dbus-launch: bin/dbus-launch
-    override-prime: |
-      snapcraftctl prime
-      sed -i "s/SNAP_NAME/$SNAPCRAFT_PROJECT_NAME/" $SNAPCRAFT_PRIME/etc/dbus-1/session.conf
-    stage-packages:
-      - dbus
   wrapper:
     plugin: dump
     source: wrapper
